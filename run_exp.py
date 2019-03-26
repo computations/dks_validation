@@ -3,6 +3,8 @@
 import os
 import shutil
 import subprocess
+import json
+import csv
 
 DKS_GIT = r"https://github.com/computations/dks"
 RAXML_GIT = r"https://github.com/amkozlov/raxml-ng.git"
@@ -17,9 +19,9 @@ EXP_PATH_TEMPLATE = "tipinner.{tip_inner}_siterepeats.{site_repeats}_simd.{simd}
 
 TEST_FILES = [
         r'DNA-Data/125/125.phy',
-        #r'DNA-Data/354/354.phy',
-        #r'Protein-Data/140/140.phy',
-        #r'Protein-Data/775/775.phy',
+        r'DNA-Data/354/354.phy',
+        r'Protein-Data/140/140.phy',
+        r'Protein-Data/775/775.phy',
         ]
 
 
@@ -53,7 +55,7 @@ def run_exp(msa_path):
         pass
     for ti in ['on', 'off']:
         for sr in ['on', 'off']:
-            if ti == sr:
+            if ti == sr and sr == 'on':
                 continue
             for simd in ['none', 'sse', 'avx', 'avx2']:
                 exp_path = os.path.join(dst_dir,
@@ -69,9 +71,95 @@ def run_exp(msa_path):
                     msa=exp_data_path, model='gtr' if 'DNA' in msa_path else
                     'lg').split())
 
+def summarize_output(exp_dir):
+    old_path = os.getcwd()
+    os.chdir(exp_dir)
+    times = []
+
+    def make_attrib(line):
+        ret = {}
+        line = line.split('/')[1]
+        parts = line.split('_')
+        for part in parts:
+            k,v = part.split('.')
+            ret[k] = v
+        return ret
+
+    def compute_time(time_line):
+        time_line = time_line[len('Elapsed time: '):]
+        time_line = time_line[:-len(' Seconds')]
+        return float(time_line)
+
+
+    def get_time(filename):
+        lines = []
+        with open(filename) as infile:
+            for line in infile:
+                lines.append(line)
+        time_line = lines[-2].strip()
+        attr = make_attrib(filename)
+        attr['time'] = compute_time(time_line)
+        return attr
+
+    for root, dirs, files in os.walk('.'):
+        for f in files:
+            if os.path.splitext(f)[1] == '.log':
+                times.append(get_time(os.path.join(root, f)))
+
+    with open('times.json', 'w') as outfile:
+        outfile.write(json.dumps(times, indent=2))
+
+    with open('times.csv', 'w') as outfile:
+        writer = csv.DictWriter(outfile, fieldnames=times[0].keys())
+        writer.writeheader()
+        for time in times:
+            writer.writerow(time)
+    os.chdir(old_path)
+
+def make_table():
+    results = {}
+    for d in os.listdir('experiments'):
+        dataset = d.split('_')[1]
+        with open(os.path.join('experiments', d, 'times.json')) as tjson:
+            results[dataset] = json.load(tjson)
+
+    print(results)
+    with open('results.md', 'w') as results_file:
+        table_cols = []
+        for _, value in results.items():
+            table_cols = list(value[0].keys())
+        for d, times in results.items():
+            results_file.write(d)
+            results_file.write('\n')
+            results_file.write('='*80)
+            results_file.write('\n')
+            results_file.write('\n')
+            results_file.write((' '*4).join(table_cols))
+            results_file.write('\n')
+            for col in table_cols:
+                results_file.write('-'*len(col))
+                if col is not table_cols[-1]:
+                    results_file.write(' '*4)
+            results_file.write('\n')
+
+            for t in times:
+                for col in table_cols:
+                    write_string = t[col];
+                    if type(t[col]) == float:
+                        write_string = str(write_string)
+                    if col != table_cols[-1]:
+                        write_string += ((len(col)+4) - len(t[col]))*' '
+                    results_file.write(write_string)
+                results_file.write('\n')
+            results_file.write('\n')
+
+
 if __name__ == "__main__":
     dl_repos()
     build_dks()
     build_raxml()
     for msa_path in TEST_FILES:
         run_exp("test-Datasets/"+msa_path)
+    for d in os.listdir('experiments'):
+        summarize_output(os.path.join('experiments',d))
+    make_table()
