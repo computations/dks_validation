@@ -15,9 +15,12 @@ RAXML_COMMAND = r"{raxml_binary} --tree rand{tree_number} --msa {msa}"\
         " --model {model} --tip-inner {tip_inner} --site-repeats"\
         " {site_repeats} --simd {simd} --force"
 
+DKS_COMMAND = r"{dks_binary} --msa {msa} --states {states}"
+
 EXP_PATH_TEMPLATE = "tipinner.{tip_inner}_siterepeats.{site_repeats}_simd.{simd}"
 
 TEST_FILES = [
+        r'DNA-Data/101/101.phy',
         r'DNA-Data/125/125.phy',
         r'DNA-Data/354/354.phy',
         r'Protein-Data/140/140.phy',
@@ -53,6 +56,11 @@ def run_exp(msa_path):
         os.makedirs(dst_dir)
     except:
         pass
+    dks = subprocess.run(DKS_COMMAND.format(dks_binary='dks/build/raxml-dks',
+        msa=msa_path, states='4' if 'DNA' in msa_path else
+        '20').split(), capture_output=True)
+    with open(os.path.join(dst_dir, 'dks_results'), 'w') as outfile:
+        outfile.write(dks.stdout.decode('utf-8'))
     for ti in ['on', 'off']:
         for sr in ['on', 'off']:
             if ti == sr and sr == 'on':
@@ -70,6 +78,7 @@ def run_exp(msa_path):
                     raxml_binary='raxml-ng/bin/raxml-ng',
                     msa=exp_data_path, model='gtr' if 'DNA' in msa_path else
                     'lg').split())
+
 
 def summarize_output(exp_dir):
     old_path = os.getcwd()
