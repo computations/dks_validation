@@ -22,7 +22,12 @@ EXP_PATH_TEMPLATE = "tipinner.{tip_inner}_siterepeats.{site_repeats}_simd.{simd}
 TEST_FILES = [
         r'DNA-Data/101/101.phy',
         r'DNA-Data/125/125.phy',
+        r'DNA-Data/128/128.phy',
         r'DNA-Data/354/354.phy',
+        r'DNA-Data/1604/1604.phy',
+        r'DNA-Data/2000/2000.phy',
+        r'DNA-Data/3782/3782.phy',
+        r'DNA-Data/4114/4114.phy',
         r'Protein-Data/140/140.phy',
         r'Protein-Data/775/775.phy',
         ]
