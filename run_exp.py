@@ -26,6 +26,7 @@ TEST_FILES = [
         r'DNA-Data/354/354.phy',
         r'DNA-Data/1604/1604.phy',
         r'DNA-Data/2000/2000.phy',
+        r'DNA-Data/2308/2308.phy',
         r'DNA-Data/3782/3782.phy',
         r'DNA-Data/4114/4114.phy',
         r'Protein-Data/140/140.phy',
@@ -63,7 +64,7 @@ def run_exp(msa_path):
         pass
     dks = subprocess.run(DKS_COMMAND.format(dks_binary='dks/build/raxml-dks',
         msa=msa_path, states='4' if 'DNA' in msa_path else
-        '20').split(), capture_output=True)
+        '20').split(), stdout=subprocess.PIPE)
     with open(os.path.join(dst_dir, 'dks_results'), 'w') as outfile:
         outfile.write(dks.stdout.decode('utf-8'))
     for ti in ['on', 'off']:
