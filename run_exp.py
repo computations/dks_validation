@@ -5,6 +5,8 @@ import shutil
 import subprocess
 import json
 import csv
+import argparse
+import pathlib
 
 DKS_GIT = r"https://github.com/computations/dks"
 RAXML_GIT = r"https://github.com/amkozlov/raxml-ng.git"
@@ -55,35 +57,52 @@ def dl_repos():
     subprocess.run(GIT_COMMAND.format(RAXML_GIT).split())
     subprocess.run(GIT_COMMAND.format(TEST_DATA_GIT).split())
 
-def run_exp(msa_path):
-    dst_dir = "experiments/exp_{}".format(os.path.splitext(os.path.split(msa_path)[1])[0])
-    dst_file = os.path.split(msa_path)[1]
-    try:
-        os.makedirs(dst_dir)
-    except:
-        pass
-    dks = subprocess.run(DKS_COMMAND.format(dks_binary='dks/build/raxml-dks',
-        msa=msa_path, states='4' if 'DNA' in msa_path else
-        '20').split(), stdout=subprocess.PIPE)
-    with open(os.path.join(dst_dir, 'dks_results'), 'w') as outfile:
-        outfile.write(dks.stdout.decode('utf-8'))
+def run_raxml(dst_dir, dst_file, msa_path):
     for ti in ['on', 'off']:
         for sr in ['on', 'off']:
             if ti == sr and sr == 'on':
                 continue
-            for simd in ['none', 'sse', 'avx', 'avx2']:
+            for simd in ['sse', 'avx', 'avx2']:
                 exp_path = os.path.join(dst_dir,
                         EXP_PATH_TEMPLATE.format(tip_inner=ti, site_repeats=sr,
                             simd=simd))
+                if check_done(exp_path):
+                    continue
                 shutil.rmtree(exp_path, ignore_errors=True)
                 os.makedirs(exp_path)
                 exp_data_path = os.path.join(exp_path, dst_file)
-                shutil.copyfile(msa_path, exp_data_path)
+                os.symlink(msa_path, exp_data_path)
                 subprocess.run(RAXML_COMMAND.format(simd=simd, tip_inner=ti,
                     site_repeats=sr, tree_number='{1}',
                     raxml_binary='raxml-ng/bin/raxml-ng',
                     msa=exp_data_path, model='gtr' if 'DNA' in msa_path else
                     'lg').split())
+                make_done(exp_path)
+
+def check_done(path):
+    return os.path.exists(os.path.join(path, ".done"))
+
+def make_done(path):
+    pathlib.Path(os.path.join(path, ".done")).touch()
+
+def run_exp(msa_path):
+    dst_dir = "experiments/exp_{}".format(os.path.splitext(os.path.split(msa_path)[1])[0])
+    dst_file = os.path.split(msa_path)[1]
+    if check_done(dst_dir):
+        return
+    try:
+        os.makedirs(dst_dir)
+    except:
+        pass
+    dks_file = os.path.join(dst_dir, 'dks_results')
+    if not os.path.exists(dks_file):
+        dks = subprocess.run(DKS_COMMAND.format(dks_binary='dks/build/raxml-dks',
+            msa=msa_path, states='4' if 'DNA' in msa_path else
+            '20').split(), stdout=subprocess.PIPE)
+        with open(dks_file, 'w') as outfile:
+            outfile.write(dks.stdout.decode('utf-8'))
+    run_raxml(dst_dir, dst_file, os.path.abspath(msa_path))
+    make_done(dst_dir)
 
 
 def summarize_output(exp_dir):
@@ -170,9 +189,15 @@ def make_table():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--build-raxml', default=False, action='store_true')
+    parser.add_argument('--build-dks', default=False, action='store_true')
+    args = parser.parse_args()
     dl_repos()
-    build_dks()
-    build_raxml()
+    if args.build_dks:
+        build_dks()
+    if args.build_raxml:
+        build_raxml()
     for msa_path in TEST_FILES:
         run_exp("test-Datasets/"+msa_path)
     for d in os.listdir('experiments'):
