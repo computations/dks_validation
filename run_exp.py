@@ -60,9 +60,9 @@ def dl_repos():
 def run_raxml(dst_dir, dst_file, msa_path):
     for ti in ['on', 'off']:
         for sr in ['on', 'off']:
-            if ti == sr and sr == 'on':
+            if ti == sr:
                 continue
-            for simd in ['sse', 'avx', 'avx2']:
+            for simd in ['avx', 'avx2']:
                 exp_path = os.path.join(dst_dir,
                         EXP_PATH_TEMPLATE.format(tip_inner=ti, site_repeats=sr,
                             simd=simd))
@@ -122,7 +122,10 @@ def summarize_output(exp_dir):
     def compute_time(time_line):
         time_line = time_line[len('Elapsed time: '):]
         time_line = time_line[:-len(' Seconds')]
-        return float(time_line)
+        try:
+            return float(time_line)
+        except:
+            return float('inf')
 
 
     def get_time(filename):
