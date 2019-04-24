@@ -7,6 +7,7 @@ import json
 import csv
 import argparse
 import pathlib
+import pickle
 
 DKS_GIT = r"https://github.com/computations/dks"
 RAXML_GIT = r"https://github.com/amkozlov/raxml-ng.git"
@@ -15,7 +16,7 @@ GIT_COMMAND = r"git clone --recursive {}"
 
 RAXML_COMMAND = r"{raxml_binary} --tree rand{tree_number} --msa {msa}"\
         " --model {model} --tip-inner {tip_inner} --site-repeats"\
-        " {site_repeats} --simd {simd} --force"
+        " {site_repeats} --simd {simd} --seed {seed} --force"
 
 DKS_COMMAND = r"{dks_binary} --msa {msa} --states {states}"
 
@@ -26,11 +27,11 @@ TEST_FILES = [
         r'DNA-Data/125/125.phy',
         r'DNA-Data/128/128.phy',
         r'DNA-Data/354/354.phy',
+        r'DNA-Data/628/628.phy',
         r'DNA-Data/1604/1604.phy',
         r'DNA-Data/2000/2000.phy',
         r'DNA-Data/2308/2308.phy',
         r'DNA-Data/3782/3782.phy',
-        r'DNA-Data/4114/4114.phy',
         r'Protein-Data/140/140.phy',
         r'Protein-Data/775/775.phy',
         ]
@@ -58,6 +59,7 @@ def dl_repos():
     subprocess.run(GIT_COMMAND.format(TEST_DATA_GIT).split())
 
 def run_raxml(dst_dir, dst_file, msa_path):
+    seed = get_seed(dst_dir)
     for ti in ['on', 'off']:
         for sr in ['on', 'off']:
             if ti == sr:
@@ -76,7 +78,7 @@ def run_raxml(dst_dir, dst_file, msa_path):
                     site_repeats=sr, tree_number='{1}',
                     raxml_binary='raxml-ng/bin/raxml-ng',
                     msa=exp_data_path, model='gtr' if 'DNA' in msa_path else
-                    'lg').split())
+                    'lg', seed=seed).split())
                 make_done(exp_path)
 
 def check_done(path):
@@ -84,6 +86,20 @@ def check_done(path):
 
 def make_done(path):
     pathlib.Path(os.path.join(path, ".done")).touch()
+
+def get_seed(path):
+    seed_path = os.path.join(path,'.seed')
+    if not os.path.exists(seed_path):
+        make_seed(path)
+    with open(os.path.join(path, '.seed')) as seed_file:
+        return int(seed_file.read())
+
+def make_seed(path):
+    with open('/dev/urandom', 'rb') as rand_file:
+        seed = int.from_bytes(rand_file.read(4), 'big')
+    with open(os.path.join(path, '.seed'), 'w') as seed_file:
+        seed_file.write(str(seed))
+
 
 def run_exp(msa_path):
     dst_dir = "experiments/exp_{}".format(os.path.splitext(os.path.split(msa_path)[1])[0])
@@ -160,7 +176,8 @@ def make_table():
         with open(os.path.join('experiments', d, 'times.json')) as tjson:
             results[dataset] = json.load(tjson)
 
-    print(results)
+    with open('results.pkl', 'wb') as pickle_file:
+        pickle.dump(results,pickle_file)
     with open('results.md', 'w') as results_file:
         table_cols = []
         for _, value in results.items():
