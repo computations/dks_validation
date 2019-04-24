@@ -53,10 +53,6 @@ def build_raxml():
     subprocess.run('make'.split())
     os.chdir(root_path)
 
-def dl_repos():
-    subprocess.run(GIT_COMMAND.format(DKS_GIT).split())
-    subprocess.run(GIT_COMMAND.format(RAXML_GIT).split())
-    subprocess.run(GIT_COMMAND.format(TEST_DATA_GIT).split())
 
 def run_raxml(dst_dir, dst_file, msa_path):
     seed = get_seed(dst_dir)
@@ -213,10 +209,12 @@ if __name__ == "__main__":
     parser.add_argument('--build-raxml', default=False, action='store_true')
     parser.add_argument('--build-dks', default=False, action='store_true')
     args = parser.parse_args()
-    dl_repos()
+    subprocess.run(GIT_COMMAND.format(TEST_DATA_GIT).split())
     if args.build_dks:
+        subprocess.run(GIT_COMMAND.format(DKS_GIT).split())
         build_dks()
     if args.build_raxml:
+        subprocess.run(GIT_COMMAND.format(RAXML_GIT).split())
         build_raxml()
     for msa_path in TEST_FILES:
         run_exp("test-Datasets/"+msa_path)
