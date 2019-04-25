@@ -58,7 +58,7 @@ def run_raxml(dst_dir, dst_file, msa_path):
     seed = get_seed(dst_dir)
     for ti in ['on', 'off']:
         for sr in ['on', 'off']:
-            if ti == sr:
+            if ti == sr and ti == 'on':
                 continue
             for simd in ['avx', 'avx2']:
                 exp_path = os.path.join(dst_dir,
