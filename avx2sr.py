@@ -20,5 +20,6 @@ for dataset, times in results.items():
     best_times.append(best_time)
     avx2sr_times.append(avx2sr_time)
     ratios.append(avx2sr_time/best_time)
+    print(dataset, "\t", avx2sr_time/best_time)
 
 print(ratios)
