@@ -1,5 +1,5 @@
-dks/*
-raxml-ng/*
-test-Datasets/*
+dks
+raxml-ng
+test-Datasets
 experiments/*
 results.md
